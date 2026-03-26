@@ -1,0 +1,23 @@
+{
+  "siteId": 100,
+  "name": "청주배전캠퍼스",
+  "description": null,
+  "opcua": {
+    "endpoint": "opc.tcp://10.137.202.25:4840/",
+    "namespace": "ns=1;s=/dc_conv"
+  },
+  "influxdb": {
+    "host": "10.137.202.25",
+    "port": 8086,
+    "username": "root",
+    "password": "root",
+    "database": "nodi",
+    "measurement": "dc-conv",
+    "retentionPolicy": "autogen",
+    "timezoneOffsetHours": 9
+  },
+  "converters": {
+    "count": 3,
+    "prefix": "dc_conv"
+  }
+}
