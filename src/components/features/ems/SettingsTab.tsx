@@ -73,6 +73,9 @@ const ALL_FIELDS: FieldDef[] = [
   // 효과 상수
   { label: "이산화탄소 배출 계수 (ton/kWh)", nodeId: N.carbon_emission_coeff, key: "carbon_emission_coeff" },
   { label: "탄소 감축 금액 상수 (원/ton)", nodeId: N.carbon_savings_coeff, key: "carbon_savings_coeff" },
+  // 대시보드 감축량 기준값
+  { label: "누적 전력 감축량 기준값 (kWh)", nodeId: N.reduction_base_energy, key: "reduction_base_energy" },
+  { label: "누적 전력 비용 감축량 기준값 (백만원)", nodeId: N.reduction_base_energy_cost, key: "reduction_base_energy_cost" },
 ];
 
 export default function SettingsTab() {
@@ -161,6 +164,7 @@ export default function SettingsTab() {
   const specFields = ALL_FIELDS.slice(0, 6);
   const lossFields = ALL_FIELDS.slice(6, 15);
   const effectFields = ALL_FIELDS.slice(15, 17);
+  const reductionBaseFields = ALL_FIELDS.slice(17, 19);
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -241,13 +245,15 @@ export default function SettingsTab() {
           </div>
         </div>
 
-        {/* 이전 기록 */}
+        {/* 대시보드 감축량 기준값 */}
         <div className="rounded-lg" style={{ background: CARD_BG, padding: "12px 16px" }}>
-          <p style={{ fontSize: 14, fontWeight: 600, color: TEXT_PRIMARY, marginBottom: 8 }}>이전 기록</p>
-          <div style={{ padding: 16, borderRadius: 6, border: `1px dashed ${BORDER}`, textAlign: "center" }}>
-            <p style={{ fontSize: 12, color: TEXT_LABEL }}>이전일 데이터 입력</p>
-            <p style={{ fontSize: 10, color: "#5a6a85", marginTop: 4 }}>시작일 명시 후 이전 기간 누적 데이터 수동 입력</p>
+          <p style={{ fontSize: 14, fontWeight: 600, color: TEXT_PRIMARY, marginBottom: 8 }}>대시보드 감축량 기준값</p>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            {reductionBaseFields.map(renderField)}
           </div>
+          <p style={{ fontSize: 10, color: "#5a6a85", marginTop: 10 }}>
+            ※ 누적 탄소 감축량, 누적 탄소 비용 감축량은 누적 전력 감축량에 기반하여 자동 계산됩니다.
+          </p>
         </div>
       </div>
     </div>

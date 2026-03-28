@@ -1,4 +1,4 @@
-import { readAllNodes } from "@/lib/opcua-client";
+import { readAllNodes, isConnected } from "@/lib/opcua-client";
 import { OPCUA_NODES } from "@/lib/opcua-nodes";
 
 export const dynamic = "force-dynamic";
@@ -21,7 +21,8 @@ export async function GET() {
     function num(nodeId: string): number | null {
       const val = raw[nodeId];
       if (val === null || val === undefined) return null;
-      return typeof val === "number" ? val : Number(val) || null;
+      const n = typeof val === "number" ? val : Number(val);
+      return isNaN(n) ? null : n;
     }
 
     /** 컨버터 모니터링 데이터 빌드 */
@@ -198,9 +199,12 @@ export async function GET() {
         simul_ac_smps_loss_c0: num(N.conf.simul_ac_smps_loss_c0),
         carbon_emission_coeff: num(N.conf.carbon_emission_coeff),
         carbon_savings_coeff: num(N.conf.carbon_savings_coeff),
+        reduction_base_energy: num(N.conf.reduction_base_energy),
+        reduction_base_energy_cost: num(N.conf.reduction_base_energy_cost),
       },
 
       _ts: Date.now(),
+      _connected: isConnected(),
     };
 
     return Response.json(data);

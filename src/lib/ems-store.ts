@@ -82,6 +82,7 @@ export interface EmsData {
   };
   settings: Record<string, number | null>;
   _ts: number;
+  _connected: boolean;
 }
 
 // ─── Store ───────────────────────────────────────────────────────────────────
@@ -90,8 +91,8 @@ interface EmsStore {
   data: EmsData | null;
   loading: boolean;
   error: string | null;
-  /** 폴링 interval ID */
-  _intervalId: ReturnType<typeof setInterval> | null;
+  /** 폴링 활성 여부 */
+  _polling: boolean;
   /** 데이터 1회 fetch */
   fetch: () => Promise<void>;
   /** 폴링 시작 (ms 간격) */
@@ -100,42 +101,83 @@ interface EmsStore {
   stopPolling: () => void;
 }
 
-export const useEmsStore = create<EmsStore>((set, get) => ({
-  data: null,
-  loading: false,
-  error: null,
-  _intervalId: null,
+/** fetch 중복 방지 플래그 */
+let fetching = false;
 
-  fetch: async () => {
+/** 폴링 타이머 ID */
+let timerId: ReturnType<typeof setTimeout> | null = null;
+
+/** visibility change 핸들러 등록 여부 */
+let visibilityHandlerRegistered = false;
+
+export const useEmsStore = create<EmsStore>((set, get) => {
+  async function doFetch() {
+    if (fetching) return; // 이전 fetch가 아직 진행 중
+    fetching = true;
     set({ loading: true });
     try {
-      const res = await fetch("/api/ems/data");
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10초 타임아웃
+      const res = await fetch("/api/ems/data", { signal: controller.signal });
+      clearTimeout(timeoutId);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data: EmsData = await res.json();
-      set({ data, error: null });
+      set({ data, error: data._connected === false ? "OPC UA 연결 끊김" : null });
     } catch (err) {
+      // 에러 시에도 기존 데이터 유지, error만 설정
       set({ error: String(err) });
     } finally {
+      fetching = false;
       set({ loading: false });
     }
-  },
+  }
 
-  startPolling: (intervalMs = 2000) => {
-    const { _intervalId, fetch: fetchFn } = get();
-    if (_intervalId) return; // 이미 폴링 중
-    fetchFn(); // 즉시 1회
-    const id = setInterval(fetchFn, intervalMs);
-    set({ _intervalId: id });
-  },
+  function scheduleNext(intervalMs: number) {
+    if (timerId) clearTimeout(timerId);
+    timerId = setTimeout(async () => {
+      if (!get()._polling) return;
+      await doFetch();
+      if (get()._polling) scheduleNext(intervalMs);
+    }, intervalMs);
+  }
 
-  stopPolling: () => {
-    const { _intervalId } = get();
-    if (_intervalId) {
-      clearInterval(_intervalId);
-      set({ _intervalId: null });
-    }
-  },
-}));
+  return {
+    data: null,
+    loading: false,
+    error: null,
+    _polling: false,
+
+    fetch: doFetch,
+
+    startPolling: (intervalMs = 2000) => {
+      if (get()._polling) return;
+      set({ _polling: true });
+      doFetch(); // 즉시 1회
+
+      // setTimeout 체이닝 (setInterval 대신 — 이전 fetch 완료 후 다음 예약)
+      scheduleNext(intervalMs);
+
+      // 브라우저 탭 복귀 시 즉시 fetch + 폴링 재개
+      if (!visibilityHandlerRegistered && typeof document !== "undefined") {
+        visibilityHandlerRegistered = true;
+        document.addEventListener("visibilitychange", () => {
+          if (document.visibilityState === "visible" && get()._polling) {
+            doFetch(); // 탭 복귀 시 즉시 갱신
+            scheduleNext(intervalMs);
+          }
+        });
+      }
+    },
+
+    stopPolling: () => {
+      set({ _polling: false });
+      if (timerId) {
+        clearTimeout(timerId);
+        timerId = null;
+      }
+    },
+  };
+});
 
 // ─── 숫자 포맷 헬퍼 ─────────────────────────────────────────────────────────
 

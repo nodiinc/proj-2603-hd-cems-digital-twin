@@ -20,8 +20,10 @@ export default function EMSLayout() {
   const [topTab, setTopTab] = useState<TopTab>("DC EMS");
   const [subTab, setSubTab] = useState<SubTab>("대시보드");
   const { startPolling, stopPolling, error } = useEmsStore();
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    setMounted(true);
     startPolling(2000);
     return () => stopPolling();
   }, [startPolling, stopPolling]);
@@ -32,6 +34,8 @@ export default function EMSLayout() {
         width: 1612,
         height: 736,
         overflow: "hidden",
+        borderRight: "1px solid #f8717150",
+        borderBottom: "1px solid #f8717150",
         background: "#14192D",
         color: "#e2e8f0",
         display: "flex",
@@ -80,8 +84,19 @@ export default function EMSLayout() {
           ))}
         </nav>
         <div style={{ flex: 1 }} />
-        <span style={{ fontSize: 10, color: "#f87171", padding: "2px 8px", borderRadius: 10, background: "#f8717115", border: "1px solid #f8717130", visibility: error ? "visible" : "hidden" }}>
-          OPC UA 연결 오류
+        <span style={{
+          fontSize: 10,
+          padding: "2px 8px",
+          borderRadius: 10,
+          display: "flex",
+          alignItems: "center",
+          gap: 5,
+          color: !mounted ? "#7080a0" : error ? "#f87171" : "#34d399",
+          background: !mounted ? "#7080a015" : error ? "#f8717115" : "#10b98115",
+          border: `1px solid ${!mounted ? "#7080a030" : error ? "#f8717130" : "#10b98130"}`,
+        }}>
+          <span style={{ width: 6, height: 6, borderRadius: "50%", background: !mounted ? "#7080a0" : error ? "#f87171" : "#34d399" }} />
+          {!mounted ? "연결 확인 중..." : error ? "엣지 게이트웨이 연결 오류" : "엣지 게이트웨이 연결됨"}
         </span>
       </header>
 

@@ -44,7 +44,7 @@ function useEffHistory() {
   return data;
 }
 
-/** Y축 domain + ticks 배열을 동적으로 계산 (1/2/5/10/20/50... 단위, 10개 미만) */
+/** Y축 domain + ticks 배열을 동적으로 계산 (1/2/5/10/20/50... 단위, 8개 미만, 위아래 1틱 여유) */
 function calcYAxis(data: HistoryPoint[], keys: ("dc" | "ac")[]): { domain: [number, number]; ticks: number[] } {
   const vals = data.flatMap((d) => keys.map((k) => d[k]).filter((v): v is number => v != null));
   if (vals.length === 0) return { domain: [0, 100], ticks: [0, 20, 40, 60, 80, 100] };
@@ -54,14 +54,13 @@ function calcYAxis(data: HistoryPoint[], keys: ("dc" | "ac")[]): { domain: [numb
   const steps = [1, 2, 5, 10, 20, 50, 100, 200, 500, 1000];
   let step = 1;
   for (const s of steps) {
-    if (Math.ceil(range / s) + 1 <= 10) { step = s; break; }
+    if (Math.ceil(range / s) + 1 + 2 <= 8) { step = s; break; }
   }
-  const min = Math.floor(rawMin / step) * step;
-  const max = Math.ceil(rawMax / step) * step;
-  const finalMax = max === min ? min + step : max;
+  const min = Math.floor(rawMin / step) * step - step;
+  const max = Math.ceil(rawMax / step) * step + step;
   const ticks: number[] = [];
-  for (let v = min; v <= finalMax; v += step) ticks.push(v);
-  return { domain: [min, finalMax], ticks };
+  for (let v = min; v <= max; v += step) ticks.push(v);
+  return { domain: [min, max], ticks };
 }
 
 /** 짝수 정각(2시간 간격)만 라벨+눈금 표시하는 커스텀 tick */
@@ -109,12 +108,12 @@ export default function DashboardTab() {
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
       {/* KPI Cards */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: 10 }}>
-        <KpiCard title="누적 전력 감축량" value={fmt(d?.reduction_energy, 1)} unit="kWh" />
+        <KpiCard title="누적 전력 감축량" value={fmt(d?.reduction_energy, 1)} unit="kWh" accent="#0ea5e9" />
+        <KpiCard title="누적 전력 비용 감축량" value={fmt(d?.reduction_energy_cost, 2)} unit="백만원" accent="#8b5cf6" />
         <KpiCard title="누적 탄소 감축량" value={fmt(d?.reduction_carbon, 2)} unit="tCO₂" accent="#10b981" />
-        <KpiCard title="누적 전력 비용 감축량" value={fmt(d?.reduction_energy_cost, 1)} unit="백만원" accent="#f59e0b" />
-        <KpiCard title="누적 탄소 비용 감축량" value={fmt(d?.reduction_carbon_cost, 1)} unit="백만원" accent="#f59e0b" />
-        <KpiCard title="DC 배전 효율" value={fmt(d?.dc_eff, 1)} unit="%" />
-        <KpiCard title="AC 배전 효율 (가상)" value={fmt(d?.ac_eff, 1)} unit="%" accent="#f97316" />
+        <KpiCard title="누적 탄소 비용 감축량" value={fmt(d?.reduction_carbon_cost, 2)} unit="백만원" accent="#8b5cf6" />
+        <KpiCard title="DC 배전 효율 (실제)" value={fmt(d?.dc_eff, 1)} unit="%" accent="#0ea5e9" />
+        <KpiCard title="AC 배전 효율 (가상)" value={fmt(d?.ac_eff, 1)} unit="%" accent="#f59e0b" />
       </div>
 
       {/* Charts */}
@@ -130,8 +129,8 @@ export default function DashboardTab() {
               <XAxis dataKey="t" tick={HourlyTick as any} interval={0} tickLine={false} axisLine={{ stroke: "#3d4a68" }} />
               <YAxis domain={effAxis.domain} tick={{ fontSize: 11, fill: "#a8b2c8" }} axisLine={{ stroke: "#3d4a68" }} ticks={effAxis.ticks} interval={0} />
               <Tooltip contentStyle={tooltipStyle} itemSorter={(a) => (a.dataKey === "dc" ? -1 : 1)} />
-              <Line type="monotone" dataKey="dc" stroke="#0ea5e9" strokeWidth={2} name="DC 효율 (%)" dot={false} connectNulls />
-              <Line type="monotone" dataKey="ac" stroke="#f59e0b" strokeWidth={2} name="AC 효율 (%)" dot={false} connectNulls />
+              <Line type="monotone" dataKey="dc" stroke="#0ea5e9" strokeWidth={2} name="DC 배전 효율 (%)" dot={false} connectNulls />
+              <Line type="monotone" dataKey="ac" stroke="#f59e0b" strokeWidth={2} name="AC 배전 효율 (%)" dot={false} connectNulls />
               <Legend content={() => (
                 <div style={{ display: "flex", justifyContent: "center", gap: 20, fontSize: 12, color: "#c5cee0", marginTop: 4 }}>
                   <span style={{ display: "flex", alignItems: "center", gap: 5 }}>
@@ -155,7 +154,7 @@ export default function DashboardTab() {
             <BarChart data={converterData} barCategoryGap="25%">
               <CartesianGrid strokeDasharray="3 3" stroke="#2e3a56" />
               <XAxis dataKey="name" tick={{ fontSize: 11, fill: "#a8b2c8" }} axisLine={{ stroke: "#3d4a68" }} />
-              <YAxis domain={barAxis.domain} tick={{ fontSize: 11, fill: "#a8b2c8" }} axisLine={{ stroke: "#3d4a68" }} ticks={barAxis.ticks} interval={0} unit=" kW" />
+              <YAxis domain={barAxis.domain} tick={{ fontSize: 11, fill: "#a8b2c8" }} axisLine={{ stroke: "#3d4a68" }} ticks={barAxis.ticks} interval={0} />
               <Tooltip
                 contentStyle={tooltipStyle}
                 formatter={(v, name) => [`${v} kW`, name]}
@@ -167,7 +166,9 @@ export default function DashboardTab() {
                 name="정격 (kW)"
                 radius={[3, 3, 0, 0]}
                 isAnimationActive={false}
-                label={{ position: "top", fontSize: 10, fill: "#a8b2c8", formatter: (v: unknown) => `${v} kW` }}
+                label={({ x, y, width, value }: { x: number; y: number; width: number; value: number }) => (
+                  <text x={x + width / 2} y={y - 5} textAnchor="middle" fill="#a8b2c8" fontSize={10}>{value} kW</text>
+                )}
               />
               <Bar
                 dataKey="used"
@@ -175,9 +176,20 @@ export default function DashboardTab() {
                 name="사용량 (kW)"
                 radius={[3, 3, 0, 0]}
                 isAnimationActive={false}
-                label={{ position: "top", fontSize: 10, fill: "#7dd3fc", formatter: (v: unknown) => `${v} kW` }}
+                label={({ x, y, width, value }: { x: number; y: number; width: number; value: number }) => (
+                  <text x={x + width / 2} y={y - 5} textAnchor="middle" fill="#7dd3fc" fontSize={10}>{value} kW</text>
+                )}
               />
-              <Legend wrapperStyle={{ fontSize: 11, color: "#a8b2c8" }} />
+              <Legend content={() => (
+                <div style={{ display: "flex", justifyContent: "center", gap: 20, fontSize: 11, color: "#a8b2c8", marginTop: 4 }}>
+                  <span style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                    <span style={{ width: 10, height: 10, background: "#5a6a8a", borderRadius: 2, display: "inline-block" }} />정격 (kW)
+                  </span>
+                  <span style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                    <span style={{ width: 10, height: 10, background: "#0ea5e9", borderRadius: 2, display: "inline-block" }} />사용량 (kW)
+                  </span>
+                </div>
+              )} />
             </BarChart>
           </ResponsiveContainer>
         </div>

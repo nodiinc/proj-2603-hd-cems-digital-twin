@@ -150,8 +150,10 @@ export async function readAllNodes(): Promise<Record<string, number | boolean | 
         valueCache.set(allNodeIds[i], null);
       }
     }
+    lastReadOk = true;
   } catch (err) {
     console.error("[OPC UA] read error:", err);
+    lastReadOk = false;
     // 연결 끊어졌을 수 있으니 전체 정리 (다음 호출 시 재연결)
     await cleanup();
     // 캐시된 값은 그대로 유지 (마지막 좋은 값)
@@ -163,6 +165,14 @@ export async function readAllNodes(): Promise<Record<string, number | boolean | 
     result[id] = valueCache.get(id) ?? null;
   }
   return result;
+}
+
+/** 마지막 읽기 성공 여부 */
+let lastReadOk = false;
+
+/** OPC UA 연결 상태 (마지막 읽기 기준) */
+export function isConnected(): boolean {
+  return lastReadOk;
 }
 
 // ─── 단건 쓰기 (설정값 저장용) ───────────────────────────────────────────────

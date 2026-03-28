@@ -56,7 +56,7 @@ function Box({ label, eff, color, img }: { label: string; eff: string; color: st
 }
 
 /** 화살표 + 아래에 수치 라벨. 화살표가 박스 중앙에 맞도록 paddingTop 적용 */
-function ArrowWithLabel({ power, voltage }: { power: string; voltage?: string }) {
+function ArrowWithLabel({ power, voltage, voltageUnit = "V" }: { power: string; voltage?: string; voltageUnit?: string }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", width: ARROW_W, paddingTop: BOX_SIZE / 2 - 8 }}>
       <svg width={ARROW_W} height="16" viewBox={`0 0 ${ARROW_W} 16`} style={{ flexShrink: 0 }}>
@@ -67,7 +67,7 @@ function ArrowWithLabel({ power, voltage }: { power: string; voltage?: string })
         <span style={{ fontSize: 14, fontWeight: 600, color: "#fff", whiteSpace: "nowrap" }}>
           {power} <span style={{ fontSize: 11, color: TEXT_UNIT }}>kW</span>
         </span>
-        {voltage && <span style={{ fontSize: 12, color: TEXT_LABEL, whiteSpace: "nowrap" }}>{voltage} V</span>}
+        {voltage && <span style={{ fontSize: 12, color: TEXT_LABEL, whiteSpace: "nowrap" }}>{voltage} {voltageUnit}</span>}
       </div>
     </div>
   );
@@ -94,9 +94,9 @@ export default function EfficiencyTab() {
           }}
         >
           <Node label="공장 계통" color="#f59e0b" img="common-grid" />
-          <ArrowWithLabel power={fmt(dc?.conv_in_p)} voltage={fmt(dc?.conv_in_v, 0)} />
+          <ArrowWithLabel power={fmt(dc?.conv_in_p)} voltage={fmt(dc?.conv_in_v, 0)} voltageUnit="VAC" />
           <Box label="AC/DC 컨버터" eff={`효율 ${fmt(dc?.conv_eff)}%`} color="#0ea5e9" img="dc-conv" />
-          <ArrowWithLabel power={fmt(dc?.conv_out_p)} voltage={fmt(dc?.conv_out_v, 0)} />
+          <ArrowWithLabel power={fmt(dc?.conv_out_p)} voltage={fmt(dc?.conv_out_v, 0)} voltageUnit="VDC" />
           <Box label="SMPS" eff={`효율 ${fmt(dc?.smps_eff)}%`} color="#0ea5e9" img="common-smps" />
           <ArrowWithLabel power={fmt(dc?.smps_out_p)} />
           <Node label="LED 부하" color="#0ea5e9" img="common-led" />
@@ -115,7 +115,6 @@ export default function EfficiencyTab() {
           >
             <span style={{ fontSize: 12, color: TEXT_LABEL }}>DC 배전 효율</span>
             <span style={{ fontSize: 15, fontWeight: 700, color: "#0ea5e9" }}>{fmt(dc?.total_eff)}%</span>
-            <span style={{ fontSize: 10, color: TEXT_UNIT }}>= SMPS 후단 / 컨버터 전단 × 100</span>
           </span>
         </div>
       </div>
@@ -135,11 +134,11 @@ export default function EfficiencyTab() {
           }}
         >
           <Node label="공장 계통" color="#f59e0b" img="common-grid" />
-          <ArrowWithLabel power={fmt(ac?.tr_in_p)} voltage={fmt(ac?.tr_in_v, 0)} />
+          <ArrowWithLabel power={fmt(ac?.tr_in_p)} voltage={fmt(ac?.tr_in_v, 0)} voltageUnit="VAC" />
           <Box label="변압기" eff={`효율 ${fmt(ac?.tr_eff)}%`} color="#f59e0b" img="ac-tr" />
-          <ArrowWithLabel power={fmt(ac?.tr_out_p)} voltage={fmt(ac?.tr_out_v, 0)} />
+          <ArrowWithLabel power={fmt(ac?.tr_out_p)} voltage={fmt(ac?.tr_out_v, 0)} voltageUnit="VAC" />
           <Box label="SMPS" eff={`효율 ${fmt(ac?.smps_eff)}%`} color="#0ea5e9" img="common-smps" />
-          <ArrowWithLabel power={fmt(ac?.smps_out_p)} voltage="48" />
+          <ArrowWithLabel power={fmt(ac?.smps_out_p)} />
           <Node label="LED 부하" color="#0ea5e9" img="common-led" />
         </div>
         <div style={{ textAlign: "center", marginTop: 6 }}>
@@ -156,7 +155,6 @@ export default function EfficiencyTab() {
           >
             <span style={{ fontSize: 12, color: TEXT_LABEL }}>AC 배전 효율</span>
             <span style={{ fontSize: 15, fontWeight: 700, color: "#f59e0b" }}>{fmt(ac?.total_eff)}%</span>
-            <span style={{ fontSize: 10, color: TEXT_UNIT }}>= SMPS 후단 / 변압기 전단 × 100</span>
           </span>
         </div>
       </div>

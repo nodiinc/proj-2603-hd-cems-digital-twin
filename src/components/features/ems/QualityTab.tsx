@@ -41,7 +41,7 @@ function useHistory(type: string) {
   return data;
 }
 
-/** Y축 domain + ticks 배열을 동적으로 계산 (1/2/5/10/20/50... 단위, 10개 미만) */
+/** Y축 domain + ticks 배열을 동적으로 계산 (1/2/5/10/20/50... 단위, 8개 미만, 위아래 1틱 여유) */
 function calcYAxis(data: HistoryPoint[], keys: ("dc" | "ac")[]): { domain: [number, number]; ticks: number[] } {
   const vals = data.flatMap((d) => keys.map((k) => d[k]).filter((v): v is number => v != null));
   if (vals.length === 0) return { domain: [0, 100], ticks: [0, 20, 40, 60, 80, 100] };
@@ -51,14 +51,13 @@ function calcYAxis(data: HistoryPoint[], keys: ("dc" | "ac")[]): { domain: [numb
   const steps = [1, 2, 5, 10, 20, 50, 100, 200, 500, 1000];
   let step = 1;
   for (const s of steps) {
-    if (Math.ceil(range / s) + 1 <= 10) { step = s; break; }
+    if (Math.ceil(range / s) + 1 + 2 <= 8) { step = s; break; } // +2 for padding, <8 ticks
   }
-  const min = Math.floor(rawMin / step) * step;
-  const max = Math.ceil(rawMax / step) * step;
-  const finalMax = max === min ? min + step : max;
+  const min = Math.floor(rawMin / step) * step - step; // 1틱 아래 여유
+  const max = Math.ceil(rawMax / step) * step + step;  // 1틱 위 여유
   const ticks: number[] = [];
-  for (let v = min; v <= finalMax; v += step) ticks.push(v);
-  return { domain: [min, finalMax], ticks };
+  for (let v = min; v <= max; v += step) ticks.push(v);
+  return { domain: [min, max], ticks };
 }
 
 /** 짝수 정각(2시간 간격)만 라벨+눈금 표시하는 커스텀 tick */
@@ -124,8 +123,8 @@ export default function QualityTab() {
         <p style={{ fontSize: 14, fontWeight: 600, color: TEXT_PRIMARY, marginBottom: 12 }}>전력 현황</p>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10 }}>
           {[
-            { label: "컨버터 전압 (실제)", val: fmt(q?.dc_voltage), unit: "VDC", valColor: "#0ea5e9" },
-            { label: "변압기 전압 (가상)", val: fmt(q?.ac_voltage), unit: "VAC", valColor: "#f59e0b" },
+            { label: "컨버터 DC 전압 (실제)", val: fmt(q?.dc_voltage), unit: "VDC", valColor: "#0ea5e9" },
+            { label: "변압기 AC 전압 (가상)", val: fmt(q?.ac_voltage), unit: "VAC", valColor: "#f59e0b" },
             { label: "계통 전압 불평형률", val: q?.v_unbal != null ? fmt(q.v_unbal) : "-", unit: "%", valColor: "#fff" },
             { label: "계통 역률", val: q?.pf != null ? fmt(q.pf) : "-", unit: "", valColor: "#fff" },
           ].map((m) => (
@@ -139,14 +138,14 @@ export default function QualityTab() {
         </div>
       </div>
 
-      {/* DC vs. AC 품질 비교 */}
+      {/* DC vs. AC 전력 품질 비교 */}
       <div className="rounded-lg" style={{ background: CARD_BG, padding: 16 }}>
-        <p style={{ fontSize: 14, fontWeight: 600, color: TEXT_PRIMARY, marginBottom: 12 }}>DC vs. AC 품질 비교</p>
+        <p style={{ fontSize: 14, fontWeight: 600, color: TEXT_PRIMARY, marginBottom: 12 }}>DC vs. AC 전력 품질 비교</p>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
           {[
-            { dcLabel: "실시간 컨버터 전압 편차", dcVal: fmt(q?.dc_v_diff), acLabel: "실시간 변압기 전압 편차", acVal: fmt(q?.ac_v_diff), ...compareTag(diffPairs[0].dc, diffPairs[0].ac, "dc") },
-            { dcLabel: "어제 컨버터 최대 전압 편차", dcVal: fmt(q?.dc_v_diff_yesterday), acLabel: "어제 변압기 최대 전압 편차", acVal: fmt(q?.ac_v_diff_yesterday), ...compareTag(diffPairs[1].dc, diffPairs[1].ac, "dc") },
-            { dcLabel: "어제 컨버터 전압 변동폭", dcVal: fmt(q?.dc_v_swing_yesterday), acLabel: "어제 변압기 전압 변동폭", acVal: fmt(q?.ac_v_swing_yesterday), ...compareTag(diffPairs[2].dc, diffPairs[2].ac, "dc") },
+            { dcLabel: "실시간 컨버터 DC 전압 편차", dcVal: fmt(q?.dc_v_diff), acLabel: "실시간 변압기 AC 전압 편차", acVal: fmt(q?.ac_v_diff), ...compareTag(diffPairs[0].dc, diffPairs[0].ac, "dc") },
+            { dcLabel: "어제 컨버터 DC 최대 전압 편차", dcVal: fmt(q?.dc_v_diff_yesterday), acLabel: "어제 변압기 AC 최대 전압 편차", acVal: fmt(q?.ac_v_diff_yesterday), ...compareTag(diffPairs[1].dc, diffPairs[1].ac, "dc") },
+            { dcLabel: "어제 컨버터 DC 전압 변동폭", dcVal: fmt(q?.dc_v_swing_yesterday), acLabel: "어제 변압기 AC 전압 변동폭", acVal: fmt(q?.ac_v_swing_yesterday), ...compareTag(diffPairs[2].dc, diffPairs[2].ac, "dc") },
           ].map((pair) => (
             <div
               key={pair.dcLabel}
@@ -203,8 +202,8 @@ export default function QualityTab() {
               <XAxis dataKey="t" tick={HourlyTick as any} interval={0} tickLine={false} />
               <YAxis domain={vAxis.domain} tick={{ fontSize: 11, fill: "#a8b2c8" }} ticks={vAxis.ticks} interval={0} />
               <Tooltip contentStyle={tooltipStyle} itemSorter={(a) => (a.dataKey === "dc" ? -1 : 1)} />
-              <Line type="monotone" dataKey="dc" stroke="#0ea5e9" strokeWidth={1.5} name="DC 후단전압 (V)" dot={false} connectNulls />
-              <Line type="monotone" dataKey="ac" stroke="#f59e0b" strokeWidth={1.5} name="AC 선간전압 (V)" dot={false} connectNulls />
+              <Line type="monotone" dataKey="dc" stroke="#0ea5e9" strokeWidth={1.5} name="컨버터 DC 전압 (V)" dot={false} connectNulls />
+              <Line type="monotone" dataKey="ac" stroke="#f59e0b" strokeWidth={1.5} name="변압기 AC 전압 (V)" dot={false} connectNulls />
               <Legend content={() => (
                 <div style={{ display: "flex", justifyContent: "center", gap: 20, fontSize: 12, color: "#c5cee0", marginTop: 4 }}>
                   <span style={{ display: "flex", alignItems: "center", gap: 5 }}>
@@ -230,8 +229,8 @@ export default function QualityTab() {
               <XAxis dataKey="t" tick={HourlyTick as any} interval={0} tickLine={false} />
               <YAxis domain={diffAxis.domain} tick={{ fontSize: 11, fill: "#a8b2c8" }} ticks={diffAxis.ticks} interval={0} />
               <Tooltip contentStyle={tooltipStyle} itemSorter={(a) => (a.dataKey === "dc" ? -1 : 1)} />
-              <Line type="monotone" dataKey="dc" stroke="#0ea5e9" strokeWidth={1.5} name="DC 전압 편차 (V)" dot={false} connectNulls />
-              <Line type="monotone" dataKey="ac" stroke="#f59e0b" strokeWidth={1.5} name="AC 선간전압 편차 (V)" dot={false} connectNulls />
+              <Line type="monotone" dataKey="dc" stroke="#0ea5e9" strokeWidth={1.5} name="컨버터 DC 전압 편차 (V)" dot={false} connectNulls />
+              <Line type="monotone" dataKey="ac" stroke="#f59e0b" strokeWidth={1.5} name="변압기 AC 전압 편차 (V)" dot={false} connectNulls />
               <Legend content={() => (
                 <div style={{ display: "flex", justifyContent: "center", gap: 20, fontSize: 12, color: "#c5cee0", marginTop: 4 }}>
                   <span style={{ display: "flex", alignItems: "center", gap: 5 }}>

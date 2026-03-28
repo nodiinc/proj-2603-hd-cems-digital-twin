@@ -163,6 +163,8 @@ const conf = {
   simul_ac_smps_loss_c0: n("/conf/simul_ac/smps/loss_coeff_c0"),
   carbon_emission_coeff: n("/conf/dashboard/reduction_perf/carbon_emission_coeff"),
   carbon_savings_coeff: n("/conf/dashboard/reduction_perf/carbon_savings_coeff"),
+  reduction_base_energy: n("/conf/dashboard/reduction_perf/energy_base"),
+  reduction_base_energy_cost: n("/conf/dashboard/reduction_perf/energy_cost_base"),
 };
 
 // ─── Export ─────────────────────────────────────────────────────────────────

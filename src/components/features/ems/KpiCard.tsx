@@ -20,7 +20,7 @@ export default function KpiCard({
   return (
     <div
       className="rounded-lg p-4"
-      style={{ background: CARD_BG, borderLeft: `3px solid ${accent}` }}
+      style={{ background: CARD_BG, borderLeft: `5px solid ${accent}` }}
     >
       <p style={{ fontSize: 11, color: TEXT_LABEL, marginBottom: 4 }}>{title}</p>
       <div style={{ display: "flex", alignItems: "baseline", gap: 4 }}>
