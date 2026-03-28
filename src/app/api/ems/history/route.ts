@@ -96,7 +96,7 @@ export async function GET(request: Request) {
     if (type === "voltage_diff") {
       const [acRows, dcRows] = await Promise.all([
         influx.query(q(`${ns}/base/dc_conv_0/ac_in/v_diff`)),
-        influx.query(q(`${ns}/calc/dc_conv_0/dc_out/v_diff_yesterday`)),
+        influx.query(q(`${ns}/base/dc_conv_0/dc_out/v_diff`)),
       ]);
       return Response.json({ data: mergeTimeSeries(acRows, dcRows, "ac", "dc") });
     }

@@ -70,9 +70,13 @@ export interface EmsData {
   };
   quality: {
     ac_voltage: number | null;
+    ac_v_diff: number | null;
     ac_v_diff_yesterday: number | null;
     dc_voltage: number | null;
+    dc_v_diff: number | null;
     dc_v_diff_yesterday: number | null;
+    ac_v_swing_yesterday: number | null;
+    dc_v_swing_yesterday: number | null;
     pf: number | null;
     v_unbal: number | null;
   };

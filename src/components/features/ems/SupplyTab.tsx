@@ -4,7 +4,7 @@ import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
 import { CARD_BG, BORDER, TEXT_PRIMARY, TEXT_LABEL } from "@/lib/ems-data";
 import { useEmsStore, fmt } from "@/lib/ems-store";
 
-const COLORS = ["#0ea5e9", "#f59e0b", "#10b981"];
+const COLORS = ["#0ea5e9", "#0ea5e9", "#0ea5e9"];
 
 export default function SupplyTab() {
   const supply = useEmsStore((s) => s.data?.supply);

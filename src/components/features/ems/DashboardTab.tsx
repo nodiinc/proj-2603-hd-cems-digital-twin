@@ -44,18 +44,38 @@ function useEffHistory() {
   return data;
 }
 
-/** Y축 domain을 10 단위로 정렬 */
-function domainBy10(data: HistoryPoint[], keys: ("dc" | "ac")[]) {
+/** Y축 domain + ticks 배열을 동적으로 계산 (1/2/5/10/20/50... 단위, 10개 미만) */
+function calcYAxis(data: HistoryPoint[], keys: ("dc" | "ac")[]): { domain: [number, number]; ticks: number[] } {
   const vals = data.flatMap((d) => keys.map((k) => d[k]).filter((v): v is number => v != null));
-  if (vals.length === 0) return [0, 100] as const;
-  const min = Math.floor(Math.min(...vals) / 10) * 10;
-  const max = Math.ceil(Math.max(...vals) / 10) * 10;
-  return [min, max === min ? min + 10 : max] as const;
+  if (vals.length === 0) return { domain: [0, 100], ticks: [0, 20, 40, 60, 80, 100] };
+  const rawMin = Math.min(...vals);
+  const rawMax = Math.max(...vals);
+  const range = rawMax - rawMin || 1;
+  const steps = [1, 2, 5, 10, 20, 50, 100, 200, 500, 1000];
+  let step = 1;
+  for (const s of steps) {
+    if (Math.ceil(range / s) + 1 <= 10) { step = s; break; }
+  }
+  const min = Math.floor(rawMin / step) * step;
+  const max = Math.ceil(rawMax / step) * step;
+  const finalMax = max === min ? min + step : max;
+  const ticks: number[] = [];
+  for (let v = min; v <= finalMax; v += step) ticks.push(v);
+  return { domain: [min, finalMax], ticks };
 }
 
-/** 정각(HH:00)인 포인트만 X축 라벨로 표시 */
-function hourlyTicks(data: HistoryPoint[]): string[] {
-  return data.map((d) => d.t).filter((t) => t.endsWith(":00"));
+/** 짝수 정각(2시간 간격)만 라벨+눈금 표시하는 커스텀 tick */
+function HourlyTick({ x, y, payload }: { x: number; y: number; payload: { value: string } }) {
+  const t = payload.value;
+  if (!t.endsWith(":00")) return null;
+  const h = parseInt(t.split(":")[0], 10);
+  if (h % 2 !== 0) return null;
+  return (
+    <g transform={`translate(${x},${y})`}>
+      <line x1={0} y1={-y} x2={0} y2={0} stroke="#2e3a56" strokeDasharray="3 3" />
+      <text x={0} y={12} textAnchor="middle" fill="#a8b2c8" fontSize={11}>{t}</text>
+    </g>
+  );
 }
 
 export default function DashboardTab() {
@@ -69,7 +89,21 @@ export default function DashboardTab() {
     used: s.used ?? 0,
   }));
 
-  const effDomain = domainBy10(effHistory, ["dc", "ac"]);
+  const effAxis = calcYAxis(effHistory, ["dc", "ac"]);
+
+  // 바 차트 Y축 계산
+  const barVals = converterData.flatMap((d) => [d.rated, d.used]);
+  const barAxis = (() => {
+    if (barVals.length === 0) return { domain: [0, 100] as [number, number], ticks: [0, 20, 40, 60, 80, 100] };
+    const rawMax = Math.max(...barVals);
+    const steps = [1, 2, 5, 10, 20, 50, 100, 200, 500, 1000];
+    let step = 1;
+    for (const s of steps) { if (Math.ceil(rawMax / s) + 1 <= 10) { step = s; break; } }
+    const max = Math.ceil(rawMax / step) * step || step;
+    const ticks: number[] = [];
+    for (let v = 0; v <= max; v += step) ticks.push(v);
+    return { domain: [0, max] as [number, number], ticks };
+  })();
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
@@ -91,11 +125,11 @@ export default function DashboardTab() {
             DC vs. AC 배전 효율 비교 (24시간)
           </p>
           <ResponsiveContainer width="100%" height={200}>
-            <LineChart data={effHistory.length > 0 ? effHistory : [{ t: "-", dc: 0, ac: 0 }]}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#2e3a56" />
-              <XAxis dataKey="t" tick={{ fontSize: 11, fill: "#a8b2c8" }} axisLine={{ stroke: "#3d4a68" }} ticks={hourlyTicks(effHistory)} />
-              <YAxis domain={effDomain} tick={{ fontSize: 11, fill: "#a8b2c8" }} axisLine={{ stroke: "#3d4a68" }} tickCount={Math.floor((effDomain[1] - effDomain[0]) / 10) + 1} />
-              <Tooltip contentStyle={tooltipStyle} />
+            <LineChart data={effHistory.length > 0 ? effHistory : [{ t: "-", dc: 0, ac: 0 }]} margin={{ left: -20, right: 5, top: 5, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#2e3a56" vertical={false} />
+              <XAxis dataKey="t" tick={HourlyTick as any} interval={0} tickLine={false} axisLine={{ stroke: "#3d4a68" }} />
+              <YAxis domain={effAxis.domain} tick={{ fontSize: 11, fill: "#a8b2c8" }} axisLine={{ stroke: "#3d4a68" }} ticks={effAxis.ticks} interval={0} />
+              <Tooltip contentStyle={tooltipStyle} itemSorter={(a) => (a.dataKey === "dc" ? -1 : 1)} />
               <Line type="monotone" dataKey="dc" stroke="#0ea5e9" strokeWidth={2} name="DC 효율 (%)" dot={false} connectNulls />
               <Line type="monotone" dataKey="ac" stroke="#f59e0b" strokeWidth={2} name="AC 효율 (%)" dot={false} connectNulls />
               <Legend content={() => (
@@ -121,7 +155,7 @@ export default function DashboardTab() {
             <BarChart data={converterData} barCategoryGap="25%">
               <CartesianGrid strokeDasharray="3 3" stroke="#2e3a56" />
               <XAxis dataKey="name" tick={{ fontSize: 11, fill: "#a8b2c8" }} axisLine={{ stroke: "#3d4a68" }} />
-              <YAxis tick={{ fontSize: 11, fill: "#a8b2c8" }} axisLine={{ stroke: "#3d4a68" }} unit=" kW" />
+              <YAxis domain={barAxis.domain} tick={{ fontSize: 11, fill: "#a8b2c8" }} axisLine={{ stroke: "#3d4a68" }} ticks={barAxis.ticks} interval={0} unit=" kW" />
               <Tooltip
                 contentStyle={tooltipStyle}
                 formatter={(v, name) => [`${v} kW`, name]}

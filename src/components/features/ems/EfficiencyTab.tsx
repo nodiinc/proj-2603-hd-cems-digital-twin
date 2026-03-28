@@ -17,8 +17,8 @@ function Node({ label, color, img }: { label: string; color: string; img: string
           width: BOX_SIZE,
           height: BOX_SIZE,
           borderRadius: 10,
-          border: `1.5px solid ${color}50`,
-          background: `${color}10`,
+          border: `1.5px solid ${color}80`,
+          background: `${color}25`,
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
@@ -26,7 +26,7 @@ function Node({ label, color, img }: { label: string; color: string; img: string
       >
         <img src={`${IMG_BASE}/${img}.png`} alt={label} style={{ width: IMG_SIZE, height: IMG_SIZE, objectFit: "contain" }} />
       </div>
-      <span style={{ fontSize: 14, fontWeight: 600, color, whiteSpace: "nowrap" }}>{label}</span>
+      <span style={{ fontSize: 14, fontWeight: 600, color: "#fff", whiteSpace: "nowrap" }}>{label}</span>
     </div>
   );
 }
@@ -40,8 +40,8 @@ function Box({ label, eff, color, img }: { label: string; eff: string; color: st
           width: BOX_SIZE,
           height: BOX_SIZE,
           borderRadius: 10,
-          border: `1.5px solid ${color}50`,
-          background: `${color}10`,
+          border: `1.5px solid ${color}80`,
+          background: `${color}25`,
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
@@ -49,14 +49,14 @@ function Box({ label, eff, color, img }: { label: string; eff: string; color: st
       >
         <img src={`${IMG_BASE}/${img}.png`} alt={label} style={{ width: IMG_SIZE, height: IMG_SIZE, objectFit: "contain" }} />
       </div>
-      <span style={{ fontSize: 14, fontWeight: 600, color: "#e2e8f0", whiteSpace: "nowrap" }}>{label}</span>
+      <span style={{ fontSize: 14, fontWeight: 600, color: "#fff", whiteSpace: "nowrap" }}>{label}</span>
       <span style={{ fontSize: 12, color: "#34d399", marginTop: -4, whiteSpace: "nowrap" }}>{eff}</span>
     </div>
   );
 }
 
 /** 화살표 + 아래에 수치 라벨. 화살표가 박스 중앙에 맞도록 paddingTop 적용 */
-function ArrowWithLabel({ power, voltage }: { power: string; voltage: string }) {
+function ArrowWithLabel({ power, voltage }: { power: string; voltage?: string }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", width: ARROW_W, paddingTop: BOX_SIZE / 2 - 8 }}>
       <svg width={ARROW_W} height="16" viewBox={`0 0 ${ARROW_W} 16`} style={{ flexShrink: 0 }}>
@@ -67,7 +67,7 @@ function ArrowWithLabel({ power, voltage }: { power: string; voltage: string }) 
         <span style={{ fontSize: 14, fontWeight: 600, color: "#fff", whiteSpace: "nowrap" }}>
           {power} <span style={{ fontSize: 11, color: TEXT_UNIT }}>kW</span>
         </span>
-        <span style={{ fontSize: 12, color: TEXT_LABEL, whiteSpace: "nowrap" }}>{voltage} V</span>
+        {voltage && <span style={{ fontSize: 12, color: TEXT_LABEL, whiteSpace: "nowrap" }}>{voltage} V</span>}
       </div>
     </div>
   );
@@ -93,13 +93,13 @@ export default function EfficiencyTab() {
             padding: "12px 0",
           }}
         >
-          <Node label="공장 계통" color="#60a5fa" img="common-grid" />
+          <Node label="공장 계통" color="#f59e0b" img="common-grid" />
           <ArrowWithLabel power={fmt(dc?.conv_in_p)} voltage={fmt(dc?.conv_in_v, 0)} />
           <Box label="AC/DC 컨버터" eff={`효율 ${fmt(dc?.conv_eff)}%`} color="#0ea5e9" img="dc-conv" />
           <ArrowWithLabel power={fmt(dc?.conv_out_p)} voltage={fmt(dc?.conv_out_v, 0)} />
-          <Box label="SMPS" eff={`효율 ${fmt(dc?.smps_eff)}%`} color="#8b5cf6" img="common-smps" />
-          <ArrowWithLabel power={fmt(dc?.smps_out_p)} voltage="48" />
-          <Node label="LED 부하" color="#f97316" img="common-led" />
+          <Box label="SMPS" eff={`효율 ${fmt(dc?.smps_eff)}%`} color="#0ea5e9" img="common-smps" />
+          <ArrowWithLabel power={fmt(dc?.smps_out_p)} />
+          <Node label="LED 부하" color="#0ea5e9" img="common-led" />
         </div>
         <div style={{ textAlign: "center", marginTop: 6 }}>
           <span
@@ -134,13 +134,13 @@ export default function EfficiencyTab() {
             padding: "12px 0",
           }}
         >
-          <Node label="공장 계통" color="#60a5fa" img="common-grid" />
+          <Node label="공장 계통" color="#f59e0b" img="common-grid" />
           <ArrowWithLabel power={fmt(ac?.tr_in_p)} voltage={fmt(ac?.tr_in_v, 0)} />
           <Box label="변압기" eff={`효율 ${fmt(ac?.tr_eff)}%`} color="#f59e0b" img="ac-tr" />
           <ArrowWithLabel power={fmt(ac?.tr_out_p)} voltage={fmt(ac?.tr_out_v, 0)} />
-          <Box label="SMPS" eff={`효율 ${fmt(ac?.smps_eff)}%`} color="#8b5cf6" img="common-smps" />
+          <Box label="SMPS" eff={`효율 ${fmt(ac?.smps_eff)}%`} color="#0ea5e9" img="common-smps" />
           <ArrowWithLabel power={fmt(ac?.smps_out_p)} voltage="48" />
-          <Node label="LED 부하" color="#f97316" img="common-led" />
+          <Node label="LED 부하" color="#0ea5e9" img="common-led" />
         </div>
         <div style={{ textAlign: "center", marginTop: 6 }}>
           <span

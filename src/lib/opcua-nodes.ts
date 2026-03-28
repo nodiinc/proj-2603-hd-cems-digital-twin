@@ -90,6 +90,7 @@ const conv0 = {
   },
   dc_out: {
     v: n("/base/dc_conv_0/dc_out/v"),
+    v_diff: n("/base/dc_conv_0/dc_out/v_diff"),
     i: n("/base/dc_conv_0/dc_out/i"),
     p: n("/base/dc_conv_0/dc_out/p"),
   },
@@ -137,6 +138,8 @@ const calc = {
     reserve_margin: n("/calc/dc_conv_0/self/reserve_margin"),
     ac_in_v_diff_yesterday: n("/calc/dc_conv_0/ac_in/v_diff_yesterday"),
     dc_out_v_diff_yesterday: n("/calc/dc_conv_0/dc_out/v_diff_yesterday"),
+    ac_in_v_swing_yesterday: n("/calc/dc_conv_0/ac_in/v_swing_yesterday"),
+    dc_out_v_swing_yesterday: n("/calc/dc_conv_0/dc_out/v_swing_yesterday"),
   },
 };
 

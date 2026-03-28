@@ -168,9 +168,13 @@ export async function GET() {
       // 전력 품질 탭
       quality: {
         ac_voltage: num(N.conv0.ac_in.v),
+        ac_v_diff: num(N.conv0.ac_in.v_diff),
         ac_v_diff_yesterday: num(N.calc.dc_conv_0.ac_in_v_diff_yesterday),
         dc_voltage: num(N.conv0.dc_out.v),
+        dc_v_diff: num(N.conv0.dc_out.v_diff),
         dc_v_diff_yesterday: num(N.calc.dc_conv_0.dc_out_v_diff_yesterday),
+        ac_v_swing_yesterday: num(N.calc.dc_conv_0.ac_in_v_swing_yesterday),
+        dc_v_swing_yesterday: num(N.calc.dc_conv_0.dc_out_v_swing_yesterday),
         pf: num(N.conv0.ac_in.pf),
         v_unbal: num(N.conv0.ac_in.v_unbal),
       },

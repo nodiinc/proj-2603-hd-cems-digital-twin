@@ -12,7 +12,8 @@ interface Section {
 /** 알람 항목: 경고/오류는 >=1이면 ON, 0이면 OFF. 상태값은 숫자 그대로 표시. */
 function AlarmRow({ item }: { item: DataItem }) {
   const raw = item.val;
-  const numVal = typeof raw === "number" ? raw : typeof raw === "boolean" ? (raw ? 1 : 0) : Number(raw) || 0;
+  const parsed = Number(raw);
+  const numVal = typeof raw === "number" ? raw : typeof raw === "boolean" ? (raw ? 1 : 0) : isNaN(parsed) ? 0 : parsed;
 
   // 상태값은 숫자 그대로 표시
   if (item.tag === "Status") {
@@ -29,7 +30,7 @@ function AlarmRow({ item }: { item: DataItem }) {
       >
         <span style={{ color: TEXT_LABEL }}>상태값</span>
         <span style={{ fontVariantNumeric: "tabular-nums", color: TEXT_PRIMARY, fontWeight: 500 }}>
-          {raw != null ? Math.round(Number(raw)) : "-"}
+          {raw != null && !isNaN(Number(raw)) ? Math.round(Number(raw)) : "-"}
         </span>
       </div>
     );
@@ -93,7 +94,7 @@ function DataSection({ section }: { section: Section }) {
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
               <tbody>
                 {items.map((item) => {
-                  const display = item.val !== null && item.val !== undefined
+                  const display = item.val != null && !isNaN(Number(item.val))
                     ? fmt(Number(item.val), 1) : "-";
                   const isTwoLine = isSectionTwoLine || item._twoLine;
                   if (isTwoLine) {
@@ -141,8 +142,8 @@ function ConverterCard({ convKey, label }: { convKey: "conv0" | "conv1" | "conv2
   const alarms = convData?.alarm ?? [];
   const warningItem = alarms.find((a) => a.tag === "Warning");
   const faultItem = alarms.find((a) => a.tag === "Fault");
-  const isWarning = !isTotal && (Number(warningItem?.val ?? 0) >= 1);
-  const isFault = !isTotal && (Number(faultItem?.val ?? 0) >= 1);
+  const isWarning = !isTotal && ((Number(warningItem?.val) || 0) >= 1);
+  const isFault = !isTotal && ((Number(faultItem?.val) || 0) >= 1);
 
   // conv0 DC의 "DC출력 유효전력 합계"만 twoLine
   const dcItems = (convData?.dc ?? []).map((item) => ({
