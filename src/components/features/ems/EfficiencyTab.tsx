@@ -99,7 +99,7 @@ export default function EfficiencyTab() {
           <ArrowWithLabel power={fmt(dc?.conv_out_p)} voltage={fmt(dc?.conv_out_v, 0)} voltageUnit="VDC" />
           <Box label="SMPS" eff={`효율 ${fmt(dc?.smps_eff)}%`} color="#0ea5e9" img="common-smps" />
           <ArrowWithLabel power={fmt(dc?.smps_out_p)} />
-          <Node label="LED 부하" color="#0ea5e9" img="common-led" />
+          <Node label="DC LED" color="#0ea5e9" img="common-led" />
         </div>
         <div style={{ textAlign: "center", marginTop: 6 }}>
           <span
@@ -139,7 +139,7 @@ export default function EfficiencyTab() {
           <ArrowWithLabel power={fmt(ac?.tr_out_p)} voltage={fmt(ac?.tr_out_v, 0)} voltageUnit="VAC" />
           <Box label="SMPS" eff={`효율 ${fmt(ac?.smps_eff)}%`} color="#0ea5e9" img="common-smps" />
           <ArrowWithLabel power={fmt(ac?.smps_out_p)} />
-          <Node label="LED 부하" color="#0ea5e9" img="common-led" />
+          <Node label="AC LED" color="#0ea5e9" img="common-led" />
         </div>
         <div style={{ textAlign: "center", marginTop: 6 }}>
           <span

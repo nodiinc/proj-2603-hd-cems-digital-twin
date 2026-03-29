@@ -201,6 +201,7 @@ export async function GET() {
         carbon_savings_coeff: num(N.conf.carbon_savings_coeff),
         reduction_base_energy: num(N.conf.reduction_base_energy),
         reduction_base_energy_cost: num(N.conf.reduction_base_energy_cost),
+        electricity_rate_tou: v(N.conf.electricity_rate_tou),
       },
 
       _ts: Date.now(),

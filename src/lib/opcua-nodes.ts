@@ -165,6 +165,7 @@ const conf = {
   carbon_savings_coeff: n("/conf/dashboard/reduction_perf/carbon_savings_coeff"),
   reduction_base_energy: n("/conf/dashboard/reduction_perf/energy_base"),
   reduction_base_energy_cost: n("/conf/dashboard/reduction_perf/energy_cost_base"),
+  electricity_rate_tou: n("/conf/dashboard/reduction_perf/electricity_rate_tou"),
 };
 
 // ─── Export ─────────────────────────────────────────────────────────────────

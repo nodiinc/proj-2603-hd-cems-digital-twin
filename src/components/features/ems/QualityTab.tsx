@@ -166,9 +166,20 @@ export default function QualityTab() {
                 <p style={{ fontSize: 20, fontWeight: 600, color: "#0ea5e9" }}>
                   {pair.dcVal} <span style={{ fontSize: 11, color: TEXT_UNIT }}>VDC</span>
                 </p>
-                <p style={{ fontSize: 10, marginTop: 3, height: 14, color: pair.compare === "win" && pair.diff ? "#34d399" : "transparent" }}>
-                  {pair.compare === "win" && pair.diff ? `AC 대비 ${pair.diff}` : "-"}
-                </p>
+                <div style={{ marginTop: 4, height: 20 }}>
+                  {pair.compare === "win" && pair.diff ? (
+                    <span style={{
+                      fontSize: 11,
+                      fontWeight: 700,
+                      padding: "2px 8px",
+                      borderRadius: 4,
+                      background: "#34d399",
+                      color: "#14192D",
+                    }}>
+                      AC 대비 {pair.diff}
+                    </span>
+                  ) : <span style={{ visibility: "hidden" }}>-</span>}
+                </div>
               </div>
               {/* VS divider */}
               <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, paddingTop: 6 }}>
@@ -182,7 +193,7 @@ export default function QualityTab() {
                 <p style={{ fontSize: 20, fontWeight: 600, color: "#f59e0b" }}>
                   {pair.acVal} <span style={{ fontSize: 11, color: TEXT_UNIT }}>VAC</span>
                 </p>
-                <p style={{ fontSize: 10, marginTop: 3, height: 14, color: "transparent" }}>-</p>
+                <div style={{ marginTop: 4, height: 20 }}><span style={{ visibility: "hidden" }}>-</span></div>
               </div>
             </div>
           ))}
@@ -201,7 +212,7 @@ export default function QualityTab() {
               <CartesianGrid strokeDasharray="3 3" stroke="#2e3a56" vertical={false} />
               <XAxis dataKey="t" tick={HourlyTick as any} interval={0} tickLine={false} />
               <YAxis domain={vAxis.domain} tick={{ fontSize: 11, fill: "#a8b2c8" }} ticks={vAxis.ticks} interval={0} />
-              <Tooltip contentStyle={tooltipStyle} itemSorter={(a) => (a.dataKey === "dc" ? -1 : 1)} />
+              <Tooltip contentStyle={tooltipStyle} itemSorter={(a) => (a.dataKey === "dc" ? -1 : 1)} isAnimationActive={false} allowEscapeViewBox={{ x: false, y: false }} />
               <Line type="monotone" dataKey="dc" stroke="#0ea5e9" strokeWidth={1.5} name="컨버터 DC 전압 (V)" dot={false} connectNulls />
               <Line type="monotone" dataKey="ac" stroke="#f59e0b" strokeWidth={1.5} name="변압기 AC 전압 (V)" dot={false} connectNulls />
               <Legend content={() => (
@@ -228,7 +239,7 @@ export default function QualityTab() {
               <CartesianGrid strokeDasharray="3 3" stroke="#2e3a56" vertical={false} />
               <XAxis dataKey="t" tick={HourlyTick as any} interval={0} tickLine={false} />
               <YAxis domain={diffAxis.domain} tick={{ fontSize: 11, fill: "#a8b2c8" }} ticks={diffAxis.ticks} interval={0} />
-              <Tooltip contentStyle={tooltipStyle} itemSorter={(a) => (a.dataKey === "dc" ? -1 : 1)} />
+              <Tooltip contentStyle={tooltipStyle} itemSorter={(a) => (a.dataKey === "dc" ? -1 : 1)} isAnimationActive={false} allowEscapeViewBox={{ x: false, y: false }} />
               <Line type="monotone" dataKey="dc" stroke="#0ea5e9" strokeWidth={1.5} name="컨버터 DC 전압 편차 (V)" dot={false} connectNulls />
               <Line type="monotone" dataKey="ac" stroke="#f59e0b" strokeWidth={1.5} name="변압기 AC 전압 편차 (V)" dot={false} connectNulls />
               <Legend content={() => (

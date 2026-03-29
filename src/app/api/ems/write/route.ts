@@ -17,7 +17,9 @@ export async function POST(request: Request) {
       return Response.json({ error: "conf 노드만 쓰기 가능합니다." }, { status: 400 });
     }
 
-    const result = await writeNode(nodeId, Number(value));
+    // 숫자로 변환 가능하면 숫자로, 아니면 문자열 그대로 (JSON 등)
+    const numVal = Number(value);
+    const result = await writeNode(nodeId, isNaN(numVal) ? String(value) : numVal);
     return Response.json(result);
   } catch (err) {
     console.error("[API /ems/write] error:", err);

@@ -109,9 +109,9 @@ export default function DashboardTab() {
       {/* KPI Cards */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: 10 }}>
         <KpiCard title="누적 전력 감축량" value={fmt(d?.reduction_energy, 1)} unit="kWh" accent="#0ea5e9" />
-        <KpiCard title="누적 전력 비용 감축량" value={fmt(d?.reduction_energy_cost, 2)} unit="백만원" accent="#8b5cf6" />
+        <KpiCard title="누적 전력 비용 감축량" value={fmt(d?.reduction_energy_cost, 1)} unit="천원" accent="#8b5cf6" />
         <KpiCard title="누적 탄소 감축량" value={fmt(d?.reduction_carbon, 2)} unit="tCO₂" accent="#10b981" />
-        <KpiCard title="누적 탄소 비용 감축량" value={fmt(d?.reduction_carbon_cost, 2)} unit="백만원" accent="#8b5cf6" />
+        <KpiCard title="누적 탄소 비용 감축량" value={fmt(d?.reduction_carbon_cost, 1)} unit="천원" accent="#8b5cf6" />
         <KpiCard title="DC 배전 효율 (실제)" value={fmt(d?.dc_eff, 1)} unit="%" accent="#0ea5e9" />
         <KpiCard title="AC 배전 효율 (가상)" value={fmt(d?.ac_eff, 1)} unit="%" accent="#f59e0b" />
       </div>
@@ -128,7 +128,7 @@ export default function DashboardTab() {
               <CartesianGrid strokeDasharray="3 3" stroke="#2e3a56" vertical={false} />
               <XAxis dataKey="t" tick={HourlyTick as any} interval={0} tickLine={false} axisLine={{ stroke: "#3d4a68" }} />
               <YAxis domain={effAxis.domain} tick={{ fontSize: 11, fill: "#a8b2c8" }} axisLine={{ stroke: "#3d4a68" }} ticks={effAxis.ticks} interval={0} />
-              <Tooltip contentStyle={tooltipStyle} itemSorter={(a) => (a.dataKey === "dc" ? -1 : 1)} />
+              <Tooltip contentStyle={tooltipStyle} itemSorter={(a) => (a.dataKey === "dc" ? -1 : 1)} isAnimationActive={false} allowEscapeViewBox={{ x: false, y: false }} />
               <Line type="monotone" dataKey="dc" stroke="#0ea5e9" strokeWidth={2} name="DC 배전 효율 (%)" dot={false} connectNulls />
               <Line type="monotone" dataKey="ac" stroke="#f59e0b" strokeWidth={2} name="AC 배전 효율 (%)" dot={false} connectNulls />
               <Legend content={() => (
@@ -166,9 +166,9 @@ export default function DashboardTab() {
                 name="정격 (kW)"
                 radius={[3, 3, 0, 0]}
                 isAnimationActive={false}
-                label={({ x, y, width, value }: { x: number; y: number; width: number; value: number }) => (
+                label={(props: any) => { const { x, y, width, value } = props; return (
                   <text x={x + width / 2} y={y - 5} textAnchor="middle" fill="#a8b2c8" fontSize={10}>{value} kW</text>
-                )}
+                ); }}
               />
               <Bar
                 dataKey="used"
@@ -176,9 +176,9 @@ export default function DashboardTab() {
                 name="사용량 (kW)"
                 radius={[3, 3, 0, 0]}
                 isAnimationActive={false}
-                label={({ x, y, width, value }: { x: number; y: number; width: number; value: number }) => (
+                label={(props: any) => { const { x, y, width, value } = props; return (
                   <text x={x + width / 2} y={y - 5} textAnchor="middle" fill="#7dd3fc" fontSize={10}>{value} kW</text>
-                )}
+                ); }}
               />
               <Legend content={() => (
                 <div style={{ display: "flex", justifyContent: "center", gap: 20, fontSize: 11, color: "#a8b2c8", marginTop: 4 }}>

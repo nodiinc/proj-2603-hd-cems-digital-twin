@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { CARD_BG, BORDER, TEXT_PRIMARY, TEXT_LABEL } from "@/lib/ems-data";
 import { useEmsStore } from "@/lib/ems-store";
 import { OPCUA_NODES } from "@/lib/opcua-nodes";
+import TariffEditor, { type TariffData } from "./TariffEditor";
 
 const inputStyle: React.CSSProperties = {
   background: "#1a2038",
@@ -53,11 +54,12 @@ function Field({
 const N = OPCUA_NODES.conf;
 
 const ALL_FIELDS: FieldDef[] = [
-  // 설비 사양
+  // 설비 사양 - 1행
   { label: "컨버터1 정격 전력 (kW)", nodeId: N.dc_conv_1_p_rated, key: "conv1_p_rated" },
   { label: "컨버터2 정격 전력 (kW)", nodeId: N.dc_conv_2_p_rated, key: "conv2_p_rated" },
   { label: "컨버터3 정격 전력 (kW)", nodeId: N.dc_conv_3_p_rated, key: "conv3_p_rated" },
   { label: "가상 DC SMPS 정격 전력 (kW)", nodeId: N.simul_dc_smps_p_rated, key: "simul_dc_smps_p_rated" },
+  // 설비 사양 - 2행
   { label: "가상 변압기 정격 전력 (kW)", nodeId: N.simul_ac_tr_p_rated, key: "simul_ac_tr_p_rated" },
   { label: "가상 AC SMPS 정격 전력 (kW)", nodeId: N.simul_ac_smps_p_rated, key: "simul_ac_smps_p_rated" },
   // 손실 상수
@@ -75,11 +77,21 @@ const ALL_FIELDS: FieldDef[] = [
   { label: "탄소 감축 금액 상수 (원/ton)", nodeId: N.carbon_savings_coeff, key: "carbon_savings_coeff" },
   // 대시보드 감축량 기준값
   { label: "누적 전력 감축량 기준값 (kWh)", nodeId: N.reduction_base_energy, key: "reduction_base_energy" },
-  { label: "누적 전력 비용 감축량 기준값 (백만원)", nodeId: N.reduction_base_energy_cost, key: "reduction_base_energy_cost" },
+  { label: "누적 전력 비용 감축량 기준값 (천원)", nodeId: N.reduction_base_energy_cost, key: "reduction_base_energy_cost" },
 ];
+
+const EMPTY_TARIFF: TariffData = { tariffs: [], times: [] };
 
 export default function SettingsTab() {
   const settings = useEmsStore((s) => s.data?.settings);
+
+  // 전기요금 설정 화면 전환
+  const [showTariff, setShowTariff] = useState(false);
+  // 전기요금 dirty 상태
+  const [tariffDirty, setTariffDirty] = useState(false);
+  const [tariffData, setTariffData] = useState<TariffData>(EMPTY_TARIFF);
+  const [tariffSnapshot, setTariffSnapshot] = useState<TariffData>(EMPTY_TARIFF);
+  const tariffInitialized = useRef(false);
 
   // 서버 값 스냅샷 (원복 기준)
   const [snapshot, setSnapshot] = useState<Record<string, string>>({});
@@ -98,6 +110,42 @@ export default function SettingsTab() {
     }
     setSnapshot(snap);
     setLocal(snap);
+
+    // 전기요금 JSON 로드
+    if (!tariffInitialized.current) {
+      tariffInitialized.current = true;
+      const raw = settings.electricity_rate_tou;
+      let parsed: TariffData | null = null;
+
+      if (raw && typeof raw === "string") {
+        try {
+          const obj = JSON.parse(String(raw));
+          if (obj && Array.isArray(obj.tariffs) && Array.isArray(obj.times)) {
+            // 이전 형식 정리: start_hour/end_hour 제거, hours 없으면 빈 배열
+            obj.times = obj.times.map((t: Record<string, unknown>) => {
+              const { start_hour: _s, end_hour: _e, ...rest } = t;
+              return { ...rest, hours: Array.isArray(rest.hours) ? rest.hours : [] };
+            });
+            parsed = obj as TariffData;
+          }
+        } catch { /* invalid JSON */ }
+      }
+
+      if (parsed) {
+        setTariffSnapshot(parsed);
+        setTariffData(parsed);
+      } else {
+        // 유효하지 않은 데이터 → 빈 구조로 초기화하고 OPC UA에 자동 writing
+        const empty = EMPTY_TARIFF;
+        setTariffSnapshot(empty);
+        setTariffData(empty);
+        fetch("/api/ems/write", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ nodeId: N.electricity_rate_tou, value: JSON.stringify(empty) }),
+        }).catch(() => {});
+      }
+    }
     initialized.current = true;
   }, [settings]);
 
@@ -107,34 +155,62 @@ export default function SettingsTab() {
 
   // 변경된 필드 찾기
   const changedKeys = ALL_FIELDS.filter((f) => local[f.key] !== snapshot[f.key]);
-  const hasChanges = changedKeys.length > 0;
+  const hasChanges = changedKeys.length > 0 || tariffDirty;
 
   // 원복
   const handleReset = () => {
     setLocal(snapshot);
+    setTariffData(tariffSnapshot);
+    setTariffDirty(false);
   };
 
-  // 적용: 변경된 값만 OPC UA 서버에 쓰기
+  // 전기요금 dirty 콜백
+  const handleTariffDirtyChange = useCallback((dirty: boolean, data: TariffData) => {
+    setTariffDirty(dirty);
+    setTariffData(data);
+  }, []);
+
+  // 적용: 변경된 값만 OPC UA 서버에 쓰기 + 전기요금 JSON
   const handleApply = async () => {
     if (!hasChanges) return;
     setSaving(true);
     try {
-      const results = await Promise.all(
-        changedKeys.map((f) =>
+      const promises: Promise<{ ok: boolean; status?: string; error?: string }>[] = [];
+
+      // 일반 필드
+      for (const f of changedKeys) {
+        promises.push(
           fetch("/api/ems/write", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ nodeId: f.nodeId, value: Number(local[f.key]) }),
           }).then((r) => r.json()),
-        ),
-      );
+        );
+      }
+
+      // 전기요금 JSON
+      if (tariffDirty) {
+        promises.push(
+          fetch("/api/ems/write", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ nodeId: N.electricity_rate_tou, value: JSON.stringify(tariffData) }),
+          }).then((r) => r.json()),
+        );
+      }
+
+      const results = await Promise.all(promises);
       const failed = results.filter((r) => !r.ok);
       if (failed.length === 0) {
         setSnapshot({ ...local });
+        if (tariffDirty) {
+          setTariffSnapshot(tariffData);
+          setTariffDirty(false);
+        }
       } else {
         const details = failed.map((r) => r.status || r.error || "unknown").join(", ");
         alert(`${failed.length}건 저장 실패: ${details}`);
-        // 성공한 것들은 스냅샷 반영
+        // 일반 필드 중 성공한 것들은 스냅샷 반영
         const successKeys = changedKeys.filter((_, i) => results[i].ok).map((f) => f.key);
         if (successKeys.length > 0) {
           setSnapshot((prev) => {
@@ -165,6 +241,50 @@ export default function SettingsTab() {
   const lossFields = ALL_FIELDS.slice(6, 15);
   const effectFields = ALL_FIELDS.slice(15, 17);
   const reductionBaseFields = ALL_FIELDS.slice(17, 19);
+
+  // 전기요금 설정 화면
+  if (showTariff) {
+    return (
+      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        {/* 상단 버튼 바 */}
+        <div style={{ display: "flex", gap: 8 }}>
+          <button
+            onClick={() => setShowTariff(false)}
+            style={{
+              padding: "6px 16px", fontSize: 12, fontWeight: 500, borderRadius: 5,
+              border: `1px solid ${BORDER}`, background: "transparent",
+              color: "#e2e8f0", cursor: "pointer",
+            }}
+          >← 설정으로 돌아가기</button>
+          <div style={{ flex: 1 }} />
+          <button
+            onClick={handleReset}
+            disabled={!hasChanges}
+            style={{
+              padding: "6px 16px", fontSize: 12, fontWeight: 500, borderRadius: 5,
+              border: `1px solid ${BORDER}`, background: "transparent",
+              color: hasChanges ? "#e2e8f0" : "#5a6380",
+              cursor: hasChanges ? "pointer" : "default",
+            }}
+          >복원</button>
+          <button
+            onClick={handleApply}
+            disabled={!hasChanges || saving}
+            style={{
+              padding: "6px 16px", fontSize: 12, fontWeight: 600, borderRadius: 5,
+              border: "none", background: hasChanges ? "#0ea5e9" : "#0ea5e940",
+              color: hasChanges ? "#fff" : "#ffffff60",
+              cursor: hasChanges ? "pointer" : "default",
+            }}
+          >{saving ? "저장 중..." : `적용${hasChanges ? ` (${changedKeys.length + (tariffDirty ? 1 : 0)})` : ""}`}</button>
+        </div>
+        <TariffEditor
+          initial={tariffSnapshot}
+          onDirtyChange={handleTariffDirtyChange}
+        />
+      </div>
+    );
+  }
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -210,7 +330,13 @@ export default function SettingsTab() {
       <div className="rounded-lg" style={{ background: CARD_BG, padding: "12px 16px" }}>
         <p style={{ fontSize: 14, fontWeight: 600, color: TEXT_PRIMARY, marginBottom: 8 }}>설비 사양</p>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12 }}>
-          {specFields.map(renderField)}
+          {/* 1행: 컨버터1~3, DC SMPS */}
+          {specFields.slice(0, 4).map(renderField)}
+          {/* 2행: 변압기, 빈칸2개, AC SMPS */}
+          {renderField(specFields[4])}
+          <div />
+          <div />
+          {renderField(specFields[5])}
         </div>
       </div>
 
@@ -236,13 +362,29 @@ export default function SettingsTab() {
           </div>
         </div>
 
-        {/* 전기 요금 */}
+        {/* 전기요금 */}
         <div className="rounded-lg" style={{ background: CARD_BG, padding: "12px 16px" }}>
-          <p style={{ fontSize: 14, fontWeight: 600, color: TEXT_PRIMARY, marginBottom: 8 }}>전기 요금</p>
-          <div style={{ padding: 16, borderRadius: 6, border: `1px dashed ${BORDER}`, textAlign: "center" }}>
-            <p style={{ fontSize: 12, color: TEXT_LABEL }}>전기 요금 테이블 설정</p>
-            <p style={{ fontSize: 10, color: "#5a6a85", marginTop: 4 }}>(TBD — 시간대별/계절별 요금 체계)</p>
+          <p style={{ fontSize: 14, fontWeight: 600, color: TEXT_PRIMARY, marginBottom: 8 }}>전기요금</p>
+          <div style={{ display: "flex", justifyContent: "center" }}>
+            <button
+              onClick={() => setShowTariff(true)}
+              style={{
+                padding: "10px 28px",
+                fontSize: 13,
+                fontWeight: 500,
+                borderRadius: 5,
+                border: `1px solid ${BORDER}`,
+                background: "transparent",
+                color: "#e2e8f0",
+                cursor: "pointer",
+              }}
+            >
+              전기요금 설정 →
+            </button>
           </div>
+          {tariffDirty && (
+            <p style={{ fontSize: 10, color: "#f59e0b", marginTop: 6 }}>※ 전기요금 변경사항이 있습니다. 적용 버튼을 눌러주세요.</p>
+          )}
         </div>
 
         {/* 대시보드 감축량 기준값 */}
